@@ -28,9 +28,6 @@ services:
       - POSTGRES_PASSWORD=q1w2e3r4t5y6u7i8o9p0
       - POSTGRES_DB=postgres
 
-    ports:
-      - 5450:5450
-
     volumes:
       - ./data/postgres:/var/lib/postgresql/data
 

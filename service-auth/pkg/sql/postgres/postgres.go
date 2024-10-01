@@ -28,9 +28,12 @@ func NewPostgres(user, password, dbname, host, port string) (*Postgres, error) {
 }
 
 func (p *Postgres) CreateUser(GUID uint32, email, ip string, password, refresh []byte) error {
-    query := "INSERT INTO users (guid, email, ip, pass_hash, refr_hash) VALUES ($1, $2, $3, $4, $5, $6)"
+    query := "INSERT INTO users (guid, email, ip, pass_hash, refr_hash) VALUES ($1, $2, $3, $4, $5)"
     _, err := p.db.Exec(query, GUID, email, ip, password, refresh)
-    return err
+    if err != nil {
+        return err
+    }
+    return nil
 }
 
 func (p *Postgres) GetUserByGUID(GUID uint32) (*models.User, error) {

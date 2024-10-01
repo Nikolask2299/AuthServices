@@ -2,6 +2,8 @@ package app
 
 import (
 	"context"
+	"crypto/sha256"
+	"fmt"
 	"hash/fnv"
 	"log/slog"
 	"service-auth/interal/models"
@@ -69,6 +71,7 @@ func (a *App) Login(ctx context.Context, GUID uint32, password string) (string, 
         log.Error("Error comparing password hashes", slog.String("Error", err.Error()))
         return "", "", err
     }
+
 	log.Info("Successful authenticated user")
 
 	accessToken, refreshToken, err := a.GenerateTokens(log, *user)
@@ -102,18 +105,24 @@ func (a *App) RefreshToken(ctx context.Context, ip, acctoken, reftoken string) (
         return "", "", err
     }
 
-	if parseRefres["sub"].(uint32) != parseAcces["sub"].(uint32) {
+	if uint32(parseRefres["sub"].(float64)) != uint32(parseAcces["sub"].(float64)) {
 		log.Error("Refresh and access token is incorrect")
         return "", "", err
     }
 	
-	user, err := a.db.GetUserByGUID(parseAcces["sub"].(uint32))
+	user, err := a.db.GetUserByGUID(uint32(parseAcces["sub"].(float64)))
 	if err != nil {
         log.Error("Error getting user by GUID", slog.String("Error", err.Error()))
         return "", "", err
     }
 
-	if err := bcrypt.CompareHashAndPassword(user.RefreshToken, []byte(reftoken)); err != nil {
+	hashrefr, err := hash256(reftoken)
+	if err!= nil {
+        log.Error("Error hashing refresh token", slog.String("Error", err.Error()))
+        return "", "", err
+    }
+
+	if err := bcrypt.CompareHashAndPassword(user.RefreshToken, []byte(hashrefr)); err != nil {
 		log.Error("Error comparing refresh token hashes", slog.String("Error", err.Error()))
         return "", "", err
     }
@@ -148,7 +157,13 @@ func (a *App) GenerateTokens(log *slog.Logger, user models.User) (string, string
 
 	log.Info("Successfully created JWT tokens")
 
-	refreshash, err := bcrypt.GenerateFromPassword([]byte(refreshToken), bcrypt.DefaultCost)
+	refrHash, err := hash256(refreshToken)
+	if err!= nil {
+        log.Error("Error hashing refresh token", slog.String("Error", err.Error()))
+        return "", "", err
+    }
+
+	refreshash, err := bcrypt.GenerateFromPassword([]byte(refrHash), bcrypt.DefaultCost)
 	if err!= nil {
 		log.Error("Error generating password hash", slog.String("Error", err.Error()))
         return "", "", err
@@ -161,6 +176,15 @@ func (a *App) GenerateTokens(log *slog.Logger, user models.User) (string, string
     }
 
 	return accessToken, refreshToken, nil
+}
+
+func hash256(s string) (string, error) {
+	hash := sha256.New()
+	_, err := hash.Write([]byte(s))
+	if err!= nil {
+        return "", err
+    }
+	return fmt.Sprintf("%x", hash.Sum(nil)), nil
 }
 
 func hash(s string) uint32 {

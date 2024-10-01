@@ -25,11 +25,11 @@ func main() {
     postgres, err := postgres.NewPostgres("postgres_admin", "q1w2e3r4t5y6u7i8o9p0", "postgres", "postgres-db", "5432")
     if err != nil {
         loger.Debug("error initializing postgres", slog.String("error", err.Error()))
-       //panic(err)
+       panic(err)
     }
 
     app := app.NewApp(loger, postgres)
-    auth := auth.NewAuthService(app)
+    auth := auth.NewAuthService(app, loger)
 
     http.HandleFunc("/", auth.Authenticate)
     http.HandleFunc("/login", auth.LoginUser)

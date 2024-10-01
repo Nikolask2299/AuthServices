@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"net"
 	"net/http"
 	"service-auth/interal/app"
 	"service-auth/pkg/jwt"
@@ -16,8 +17,8 @@ type AuthService struct {
 	logger *slog.Logger
 }
 
-func NewAuthService(app *app.App) *AuthService {
-    return &AuthService{app: app}
+func NewAuthService(app *app.App, logger *slog.Logger) *AuthService {
+    return &AuthService{app: app, logger: logger}
 }
 
 func (au *AuthService) RegisterUser(w http.ResponseWriter, r *http.Request) {
@@ -27,7 +28,8 @@ func (au *AuthService) RegisterUser(w http.ResponseWriter, r *http.Request) {
 		slog.String("method", r.Method),
         slog.String("url", r.URL.String()),
 	)
-
+	IP, _, _ := net.SplitHostPort(r.RemoteAddr)
+	
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second * 5)
 	defer cancel()
 
@@ -36,8 +38,6 @@ func (au *AuthService) RegisterUser(w http.ResponseWriter, r *http.Request) {
         http.Error(w, "Missing email or password", http.StatusBadRequest)
         return
     }
-
-	IP := r.Header.Get("X-Forwarded-For")
 
 	log.Info("Registering user")
 	GUID, err := au.app.Register(ctx, email, IP, password)
@@ -54,7 +54,7 @@ func (au *AuthService) LoginUser(w http.ResponseWriter, r *http.Request) {
     log := au.logger.With(
         slog.String("op", op),
         slog.String("method", r.Method),
-        slog.String("url", r.URL.String()),
+		slog.String("url", r.URL.String()),
     )
 
     ctx, cancel := context.WithTimeout(context.Background(), time.Second * 5)
@@ -160,6 +160,6 @@ func (au *AuthService) Authenticate(w http.ResponseWriter, r *http.Request) {
         return
     }
 
-	fmt.Fprintln(w, "Authorization", parsetoken["GUID"])
+	fmt.Fprintln(w, "Authorization", uint32(parsetoken["sub"].(float64)))
 }
 
