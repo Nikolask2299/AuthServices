@@ -4,6 +4,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"service-auth/cmd/migration"
 	"service-auth/interal/app"
 	"service-auth/interal/http/auth"
 	"service-auth/pkg/sql/postgres"
@@ -16,6 +17,8 @@ const (
 )
 
 func main() {
+    migration.Migrations()
+
 	loger := setupLogger("local")
 	loger = loger.With(slog.String("env", "local"))
 
